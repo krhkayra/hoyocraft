@@ -1,0 +1,16 @@
+[Desktop Entry]
+Categories=Game
+Comment=An open-source launcher written from scratch in Rust
+Exec=/usr/bin/hoyocraft
+Icon=hoyocraft
+Name=HoyoCraft
+NoDisplay=false
+Path=
+PrefersNonDefaultGPU=false
+StartupNotify=true
+StartupWMClass=kyr.launcher.hoyocraft
+Terminal=false
+TerminalOptions=
+Type=Application
+X-KDE-SubstituteUID=false
+X-KDE-Username=
