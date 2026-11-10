@@ -2,7 +2,7 @@ PREFIX ?= /usr
 DESTDIR ?=
 
 all:
-	cargo run --build
+	cargo build --release
 
 clean:
 	rm -f Cargo.lock
