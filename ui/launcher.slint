@@ -1,0 +1,281 @@
+import { Button, CheckBox, ComboBox, LineEdit, ScrollView, Palette } from "std-widgets.slint";
+
+export struct GameEntry { key: string, name: string, artwork: image }
+export struct SocialEntry { name: string, url: string, icon: image }
+
+component Caption inherits Text {
+    color: Palette.foreground;
+    font-size: 1rem;
+}
+
+// Compact icon actions use the live Qt palette; standard form/launch controls
+// remain native Qt-style widgets. Qt QPushButton has a desktop minimum width.
+component IconAction inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback clicked();
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: focus.has-focus ? Palette.accent-background : Palette.border;
+    background: touch.pressed ? Palette.selection-background : touch.has-hover ? Palette.alternate-background : Palette.control-background;
+    opacity: root.enabled ? 1 : 0.5;
+    Image {
+        x: (parent.width - 22px) / 2; y: (parent.height - 22px) / 2;
+        width: 22px; height: 22px;
+        source: root.icon;
+        image-fit: contain;
+        colorize: touch.pressed ? Palette.selection-foreground : Palette.control-foreground;
+    }
+    focus := FocusScope {
+        width: 100%; height: 100%;
+        enabled: root.enabled;
+        accessible-role: button;
+        accessible-label: root.label;
+        accessible-enabled: root.enabled;
+        accessible-action-default => { if root.enabled { root.clicked(); } }
+        key-pressed(event) => {
+            if root.enabled && (event.text == " " || event.text == "\n") { root.clicked(); return accept; }
+            return reject;
+        }
+        touch := TouchArea {
+            enabled: root.enabled;
+            clicked => { focus.focus(); root.clicked(); }
+        }
+    }
+    Tooltip { text: @markdown("\{root.label}"); }
+}
+
+export component LauncherWindow inherits Window {
+    title: "HoYoCraft";
+    in property <string> system-font;
+    default-font-family: root.system-font;
+    preferred-width: 1180px;
+    preferred-height: 740px;
+    min-width: 820px;
+    min-height: 560px;
+    background: Palette.background;
+    in property <image> refresh-icon;
+    in property <image> settings-icon;
+    in property <image> play-icon;
+    in property <[GameEntry]> games;
+    in property <[SocialEntry]> socials;
+    in property <int> selected-game: 0;
+    in property <image> background-image;
+    in property <image> video-frame;
+    in property <bool> video-visible;
+    in property <bool> can-launch;
+    in property <bool> running;
+    in property <bool> loading;
+    in property <string> game-title: "Genshin Impact";
+    in property <string> status-text;
+    in property <string> runtime-label;
+    in property <string> error-text;
+    in property <string> media-message;
+    in property <string> activity;
+    in property <string> game-executable;
+    callback select-game(int);
+    callback settings-clicked();
+    callback refresh-clicked();
+    callback launch-clicked();
+    callback social-clicked(string);
+    callback details-clicked();
+
+    HorizontalLayout {
+        spacing: 0;
+        Rectangle {
+            width: 80px;
+            background: Palette.background;
+            VerticalLayout {
+                padding: 8px;
+                spacing: 10px;
+                for game[index] in root.games: Rectangle {
+                    height: 66px;
+                    border-radius: 4px;
+                    border-width: root.selected-game == index ? 2px : 1px;
+                    border-color: root.selected-game == index ? Palette.accent-background : Palette.border;
+                    background: Palette.control-background;
+                    Image { x: 4px; y: 4px; width: parent.width - 8px; height: parent.height - 8px; source: game.artwork; image-fit: contain; }
+                    FocusScope {
+                        width: 100%; height: 100%;
+                        accessible-role: button;
+                        accessible-label: game.name;
+                        key-pressed(event) => {
+                            if event.text == " " || event.text == "\n" { root.select-game(index); return accept; }
+                            return reject;
+                        }
+                        TouchArea { clicked => { parent.focus(); root.select-game(index); } }
+                    }
+                }
+                Rectangle { vertical-stretch: 1; }
+                IconAction { width: 64px; height: 38px; icon: root.refresh-icon; label: "Refresh"; clicked => { root.refresh-clicked(); } }
+                IconAction { width: 64px; height: 38px; icon: root.settings-icon; label: "Settings"; clicked => { root.settings-clicked(); } }
+            }
+        }
+        Rectangle { width: 1px; background: Palette.border; }
+        Rectangle {
+            horizontal-stretch: 1;
+            background: Palette.background;
+            Rectangle {
+                x: 8px; y: 8px; width: parent.width - 16px; height: parent.height - 16px;
+                clip: true;
+                background: Palette.alternate-background;
+                Image { width: 100%; height: 100%; source: root.background-image; image-fit: cover; }
+                if root.video-visible: Image { width: 100%; height: 100%; source: root.video-frame; image-fit: cover; }
+                Rectangle {
+                    y: parent.height * 0.5; height: parent.height * 0.5; width: 100%;
+                    background: @linear-gradient(180deg, Palette.background.transparentize(1) 0%, Palette.background.transparentize(0.12) 100%);
+                }
+                Rectangle {
+                    x: 24px; y: 24px; width: min(240px, parent.width - 110px); height: 64px;
+                    background: Palette.background;
+                    border-radius: 4px;
+                    VerticalLayout {
+                        padding: 10px; spacing: 2px;
+                        Text { text: root.game-title; color: Palette.foreground; font-size: 1.55rem; font-weight: 600; }
+                        Text { text: "Game library"; color: Palette.foreground; font-size: 0.9rem; }
+                    }
+                }
+                VerticalLayout {
+                    x: parent.width - 64px; y: 24px; width: 40px; height: 136px;
+                    spacing: 8px;
+                    for social in root.socials: IconAction {
+                        icon: social.icon;
+                        width: 40px;
+                        height: 40px;
+                        label: social.name + ": " + social.url;
+                        enabled: social.url != "";
+                        clicked => { root.social-clicked(social.url); }
+                    }
+                }
+                VerticalLayout {
+                    x: 24px; y: 118px; width: parent.width - 110px;
+                    spacing: 6px;
+                    if root.error-text != "": Rectangle {
+                        height: error-label.preferred-height + 20px;
+                        background: Palette.background;
+                        border-color: Palette.accent-background; border-width: 1px;
+                        error-label := Caption { x: 10px; y: 10px; width: parent.width - 20px; text: root.error-text; wrap: word-wrap; }
+                    }
+                }
+                Rectangle {
+                    x: 24px; y: parent.height - 138px; width: min(330px, parent.width - 48px); height: 64px;
+                    background: Palette.background;
+                    border-color: Palette.border; border-width: 1px; border-radius: 4px;
+                    VerticalLayout {
+                        padding: 10px; spacing: 4px;
+                        Caption { text: root.status-text; font-weight: 600; }
+                        Caption { text: root.runtime-label; overflow: elide; font-size: 0.9rem; }
+                    }
+                }
+                HorizontalLayout {
+                    x: 24px; y: parent.height - 58px; width: parent.width - 48px; height: 40px;
+                    spacing: 10px;
+                    Text { text: root.loading ? "Loading background…" : root.media-message; color: Palette.foreground; font-size: 0.9rem; overflow: elide; horizontal-stretch: 1; }
+                    Button { text: "Details"; clicked => { root.details-clicked(); } }
+                    Button {
+                        text: root.running ? "Running…" : "Launch Game";
+                        icon: root.play-icon;
+                        colorize-icon: true;
+                        primary: true;
+                        min-width: 180px;
+                        enabled: root.can-launch && !root.running;
+                        clicked => { root.launch-clicked(); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component SettingsWindow inherits Window {
+    title: "HoYoCraft Settings";
+    in property <string> system-font;
+    default-font-family: root.system-font;
+    preferred-width: 660px;
+    preferred-height: 780px;
+    min-width: 540px;
+    min-height: 480px;
+    background: Palette.background;
+    in-out property <string> game-path;
+    in-out property <string> launch-options;
+    in-out property <string> wallpaper-path;
+    in-out property <string> runtime-path;
+    in-out property <bool> hoyoplay-backgrounds;
+    in-out property <bool> animated-background;
+    in property <[string]> runtime-labels;
+    in-out property <int> runtime-index;
+    in property <string> error-text;
+    callback browse-game();
+    callback browse-wallpaper();
+    callback browse-runtime();
+    callback runtime-selected(int);
+    callback save-clicked();
+    callback cancel-clicked();
+    VerticalLayout {
+        padding: 18px; spacing: 12px;
+        Text { text: "Settings"; color: Palette.foreground; font-size: 1.7rem; font-weight: 600; }
+        ScrollView {
+            VerticalLayout {
+                padding: 4px; spacing: 10px;
+                if root.error-text != "": Caption { text: root.error-text; wrap: word-wrap; }
+                Caption { text: "Game folder (or its parent)"; font-weight: 600; }
+                Caption { text: "Detects Genshin Impact/GenshinImpact.exe under game/."; wrap: word-wrap; font-size: 0.9rem; }
+                HorizontalLayout {
+                    LineEdit { text <=> root.game-path; accessible-label: "Game directory"; }
+                    Button { text: "Browse…"; clicked => { root.browse-game(); } }
+                }
+                Caption { text: "Additional launch options"; }
+                LineEdit { text <=> root.launch-options; placeholder-text: "-windowed -screen-fullscreen 0"; accessible-label: "Launch options"; }
+                Rectangle { height: 1px; background: Palette.border; }
+                Caption { text: "Wine / Proton"; font-weight: 600; }
+                Caption { text: "Pinned default: DWProton 11.0-3"; }
+                ComboBox {
+                    model: root.runtime-labels;
+                    current-index <=> root.runtime-index;
+                    selected(value) => { root.runtime-selected(self.current-index); }
+                }
+                HorizontalLayout {
+                    LineEdit { text <=> root.runtime-path; accessible-label: "Runtime path"; }
+                    Button { text: "Browse…"; clicked => { root.browse-runtime(); } }
+                }
+                Caption { text: "DWProton is not bundled or downloaded yet."; font-size: 0.9rem; wrap: word-wrap; }
+                Rectangle { height: 1px; background: Palette.border; }
+                Caption { text: "Wallpaper"; font-weight: 600; }
+                HorizontalLayout {
+                    LineEdit { text <=> root.wallpaper-path; placeholder-text: "Default: assets/background.*"; accessible-label: "Wallpaper path"; }
+                    Button { text: "Browse…"; clicked => { root.browse-wallpaper(); } }
+                }
+                Button { text: "Use default wallpaper"; clicked => { root.wallpaper-path = ""; } }
+                CheckBox { text: "Experimental: use HoYoPlay backgrounds"; checked <=> root.hoyoplay-backgrounds; }
+                CheckBox { text: "Play animated background (muted)"; checked <=> root.animated-background; enabled: root.hoyoplay-backgrounds; }
+                Caption { text: "Animation off uses the API static image. A custom wallpaper overrides online backgrounds. Network errors use local assets."; wrap: word-wrap; font-size: 0.9rem; }
+                Rectangle { vertical-stretch: 1; }
+            }
+        }
+        HorizontalLayout {
+            Rectangle { horizontal-stretch: 1; }
+            Button { text: "Cancel"; clicked => { root.cancel-clicked(); } }
+            Button { text: "Save"; clicked => { root.save-clicked(); } }
+        }
+    }
+}
+
+export component DetailsWindow inherits Window {
+    title: "Game details";
+    in property <string> system-font;
+    default-font-family: root.system-font;
+    preferred-width: 560px;
+    preferred-height: 220px;
+    background: Palette.background;
+    in property <string> executable;
+    in property <string> activity;
+    VerticalLayout {
+        padding: 18px; spacing: 12px;
+        Caption { text: root.executable; wrap: word-wrap; }
+        Caption { text: root.activity; wrap: word-wrap; }
+        Caption { text: "Game download and installation are not implemented yet."; wrap: word-wrap; }
+    }
+}

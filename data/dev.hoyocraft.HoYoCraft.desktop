@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=HoYoCraft
+GenericName=Game Launcher
+GenericName[tr]=Oyun Başlatıcı
+Comment=Launch Genshin Impact with Wine or Proton
+Comment[tr]=Genshin Impact'i Wine veya Proton ile başlat
+Exec=hoyocraft
+Terminal=false
+Categories=Game;
+StartupNotify=true
+StartupWMClass=dev.hoyocraft.HoYoCraft
