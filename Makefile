@@ -10,7 +10,7 @@ clean:
 
 install:
 	install -Dm755 target/release/hoyocraft $(DESTDIR)$(PREFIX)/bin/hoyocraft
-	install -Dm644 assets/hoyocraft $(DESTDIR)$(PREFIX)/share/applications/hoyocraft.desktop
+	install -Dm644 assets/hoyocraft.desktop $(DESTDIR)$(PREFIX)/share/applications/hoyocraft.desktop
 	install -Dm644 assets/hoyocraft.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/256x256/apps/hoyocraft.png
 	install -Dm644 assets/hoyocraft.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/310x310/apps/hoyocraft.png
 
