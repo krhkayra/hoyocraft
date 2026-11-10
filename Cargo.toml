@@ -4,7 +4,12 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.92"
 license = "GPL-3.0-or-later"
-description = "A Slint Linux launcher for HoYoverse games"
+description = "An open-source launcher written from scratch in Rust"
+homepage = "https://github.com/krhkayra/hoyocraft"
+repository = "https://github.com/krhkayra/hoyocraft"
+authors = [
+	"Kayra <https://github.com/krhkayra>"
+]
 
 [dependencies]
 anyhow = "1"
